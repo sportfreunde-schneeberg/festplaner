@@ -687,6 +687,7 @@ function go(p){ if(location.hash.slice(1)===p) route(); else location.hash=p; }
 
 /* ---------- Kopf ---------- */
 function modebar(){ var b=$("modebar"); b.textContent=""; var live=S.mode==="live";
+  if(!window.FEST_NUR_DEMO){ var zp=el("a","lnk strong","‹ Zurück zum Portal"); zp.href="/"; zp.style.marginRight="14px"; add(b,zp); }
   add(b,el("span","dot "+(live?"on":"off")),el("span",null,S.busy?"Daten werden geladen …":live?(PL.on?"Verbunden mit Excel und Planner „"+CFG.plan+"“":"Verbunden mit der Excel. Meilensteine und Aufgaben sind noch nicht in Planner.")+(S.user?" · "+S.user:""):(D.Ressorts.length?"Demo-Modus mit Beispieldaten. Änderungen gehen beim Neuladen der Seite verloren.":"Nicht angemeldet.")),el("span","sp"));
   if(live&&PL.on&&planLink()){ var a=el("a","lnk","Plan in Planner öffnen"); a.href=planLink(); a.target="_blank"; a.rel="noopener"; b.appendChild(a); }
   if(live){ add(b,btn("lnk","Neu laden",function(){ laden(); }),btn("lnk","Abmelden",abmelden)); }
