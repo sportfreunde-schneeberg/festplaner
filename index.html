@@ -396,7 +396,7 @@ var Demo={ load:function(){ if(!DemoDB) DemoDB=JSON.parse($("demo").textContent|
   bildLaden:function(){ return Promise.resolve(null); }, bildSpeichern:function(name,blob){ return Promise.resolve(URL.createObjectURL(blob)); } };
 var pca=null, konto=null, ids=null, sess=null, GR="https://graph.microsoft.com/v1.0";
 function token(){ if(window.FEST_TEST_AUTH) return window.FEST_TEST_AUTH.token();
-  return pca.acquireTokenSilent({scopes:SCOPES,account:konto}).catch(function(){ return pca.acquireTokenPopup({scopes:SCOPES,account:konto}); }).then(function(r){ return r.accessToken; }); }
+  return pca.acquireTokenSilent({scopes:SCOPES,account:konto}).catch(function(e){ if(e&&/interaction_required|consent_required|login_required|no_tokens_found/i.test(e.errorCode||"")){ pca.acquireTokenRedirect({scopes:SCOPES,account:konto,state:location.hash}); return new Promise(function(){}); } throw e; }).then(function(r){ return r.accessToken; }); }
 function warte(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
 function gf(path,o,versuch){ o=o||{}; versuch=versuch||0; return token().then(function(t){ var hd={Authorization:"Bearer "+t}; if(o.body&&!o.raw) hd["Content-Type"]="application/json"; if(o.raw) hd["Content-Type"]=o.raw; if(sess&&o.wb) hd["workbook-session-id"]=sess;
   if(o.etag) hd["If-Match"]=o.etag; if(o.prefer) hd.Prefer="return=representation";
@@ -868,11 +868,11 @@ $("bRot").addEventListener("click",function(){ var it=S.sel&&S.items.get(S.sel);
 
 /* ---------- Anmeldung, Einstellungen ---------- */
 function msalBereit(){ if(pca) return true; if(!window.msal||location.protocol==="file:") return false;
-  pca=new msal.PublicClientApplication({auth:{clientId:CFG.clientId,authority:"https://login.microsoftonline.com/"+CFG.tenantId,redirectUri:location.origin+location.pathname.replace(/index\.html$/,"")},cache:{cacheLocation:"sessionStorage"}}); return true; }
+  pca=new msal.PublicClientApplication({auth:{clientId:CFG.clientId,authority:"https://login.microsoftonline.com/"+CFG.tenantId,redirectUri:location.origin+location.pathname.replace(/index\.html$/,"")},cache:{cacheLocation:"sessionStorage",storeAuthStateInCookie:true}}); return true; }
 function anmelden(){ if(!msalBereit()){ note(location.protocol==="file:"?"Die Anmeldung funktioniert nur, wenn die Seite über eine Web-Adresse (https) geöffnet wird, nicht als lokale Datei.":"Die Microsoft-Anmeldung konnte nicht geladen werden.",true); return; }
-  pca.loginPopup({scopes:SCOPES,prompt:"select_account"}).then(function(r){ konto=r.account; live(); }).catch(function(e){ if(e&&e.errorCode==="user_cancelled") return; note("Die Anmeldung hat nicht geklappt."+(e&&e.errorMessage?" ("+e.errorMessage.split("\n")[0]+")":""),true); }); }
+  /* Weiterleitung statt Popup: Popups scheitern auf dem Handy. */ pca.loginRedirect({scopes:SCOPES,prompt:"select_account",state:location.hash||""}).catch(function(e){ if(e&&e.errorCode==="user_cancelled") return; note("Die Anmeldung hat nicht geklappt."+(e&&e.errorMessage?" ("+e.errorMessage.split("\n")[0]+")":""),true); }); }
 function live(){ S.mode="live"; S.user=konto?(konto.name||konto.username||""):""; ids=null; sess=null; note(""); laden(); }
-function abmelden(){ var k=konto; konto=null; S.mode="demo"; S.user=""; ids=null; sess=null; DemoDB=null; if(pca&&k) pca.logoutPopup({account:k}).catch(function(){}); laden(); }
+function abmelden(){ var k=konto; konto=null; S.mode="demo"; S.user=""; ids=null; sess=null; DemoDB=null; if(pca&&k){ pca.logoutRedirect({account:k,postLogoutRedirectUri:location.origin+location.pathname}).catch(function(){}); return; } laden(); }
 function cfgOeffnen(){ CFGK.forEach(function(k){ $("c_"+k).value=CFG[k]; }); var d=$("cfgDlg"); if(d.showModal) d.showModal(); else d.setAttribute("open",""); }
 function cfgZu(){ var d=$("cfgDlg"); if(d.close) d.close(); else d.removeAttribute("open"); }
 $("cClose").addEventListener("click",cfgZu);
@@ -894,8 +894,12 @@ if(!ok3d){ var m3=el("div","leer","Die 3D-Ansicht konnte hier nicht geladen werd
 window.addEventListener("hashchange",route);
 S.page=location.hash.slice(1)||"start";
 if(window.FEST_TEST_AUTH){ S.mode="live"; S.user=window.FEST_TEST_AUTH.name||""; }
-else if(!window.FEST_NUR_DEMO&&msalBereit()){ var acc=pca.getAllAccounts(); if(acc.length){ konto=acc[0]; S.mode="live"; S.user=konto.name||konto.username||""; } }
-laden();
+if(!window.FEST_TEST_AUTH&&!window.FEST_NUR_DEMO&&msalBereit()){
+  pca.handleRedirectPromise().then(function(r){ var acc=r&&r.account?r.account:(pca.getAllAccounts()[0]||null);
+      if(r&&r.state&&/^#/.test(r.state)&&location.hash!==r.state){ history.replaceState(null,"",location.pathname+location.search+r.state); S.page=r.state.slice(1)||"start"; }
+      if(acc){ konto=acc; S.mode="live"; S.user=konto.name||konto.username||""; } laden(); })
+    .catch(function(e){ laden(); note("Die Anmeldung hat nicht geklappt."+(e&&e.errorMessage?" ("+e.errorMessage.split("\n")[0]+")":""),true); });
+} else laden();
 })();
 </script>
 </body>
