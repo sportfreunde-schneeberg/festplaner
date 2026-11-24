@@ -267,6 +267,18 @@ img{max-width:100%}
 .tasks li.done .tt>span{text-decoration:line-through;color:var(--muted)}
 .tasks .x{background:none;border:0;color:var(--muted);font-size:13px;padding:2px 4px;text-decoration:underline}
 .chips{margin-bottom:8px}
+@media (max-width:640px){
+.twrap{border:none;background:none}
+.tbl thead{display:none}
+.tbl,.tbl tbody,.tbl tr,.tbl td{display:block;width:100%}
+.tbl tr{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:0 0 10px;padding:6px 10px}
+.tbl td{border:none!important;padding:4px 0!important;display:flex;gap:10px;justify-content:space-between;align-items:baseline;text-align:right;white-space:normal!important}
+.tbl td[data-label]::before{content:attr(data-label);font-size:12px;font-weight:700;color:var(--muted);text-align:left;flex:0 0 38%}
+.tbl td:empty{display:none}
+.tbl td:first-child{justify-content:flex-start;font-weight:700}
+.tbl td:last-child{justify-content:flex-end}
+.tbl tr.sum td{display:block;text-align:left}
+}
 .twrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
 .tbl{border-collapse:collapse;width:100%;font-size:13.5px}
 .tbl th{background:var(--band);color:#fff;text-align:left;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;padding:9px 10px;white-space:nowrap}
@@ -856,7 +868,7 @@ function seiteInfra(pg){ var sec=el("section"); sec.appendChild(kopf("Festplatz 
 function zeig(c,v){ if(v==null||v==="") return ""; if(c[2]==="date") return fd(v); if(c[2]==="dt") return fdt(v); if(c[2]==="num") return c[1].indexOf("€")>-1?eur(v):String(v).replace(".",","); if(c[2]==="bool") return v?"Ja":"Nein"; if(c[2]==="map") return c[3][v]||""; return String(v); }
 function seiteTabelle(pg,sheet,titel,sub){ var sec=el("section"); sec.appendChild(kopf(titel,sub,btn("btn primary",SCH[sheet].eins+" hinzufügen",function(){ formular(sheet,null,{}); })));
   var cols=SCH[sheet].cols, wrap=el("div","twrap"), tb=el("table","tbl"), th=el("tr"); cols.forEach(function(c){ th.appendChild(el("th",null,c[1])); }); th.appendChild(el("th")); add(tb,add(el("thead"),th));
-  var body=el("tbody"); D[sheet].forEach(function(o){ var tr=el("tr"); cols.forEach(function(c){ var td=el("td",c[2]==="num"||c[2]==="nr"?"num":"",zeig(c,o[c[0]])); tr.appendChild(td); }); var td=el("td"); td.appendChild(btn("btn","Bearbeiten",function(){ formular(sheet,o); })); tr.appendChild(td); body.appendChild(tr); });
+  var body=el("tbody"); D[sheet].forEach(function(o){ var tr=el("tr"); cols.forEach(function(c){ var td=el("td",c[2]==="num"||c[2]==="nr"?"num":"",zeig(c,o[c[0]])); td.setAttribute("data-label",c[1]); tr.appendChild(td); }); var td=el("td"); td.appendChild(btn("btn","Bearbeiten",function(){ formular(sheet,o); })); tr.appendChild(td); body.appendChild(tr); });
   if(!D[sheet].length){ var tr=el("tr"), td=el("td","leer","Noch keine Einträge."); td.colSpan=cols.length+1; tr.appendChild(td); body.appendChild(tr); }
   if(sheet==="Budget"&&D.Budget.length){ var s=function(art,f){ return D.Budget.filter(function(b){ return b.art===art; }).reduce(function(a,b){ return a+(+b[f]||0); },0); }, tf=el("tr","sum"), td2=el("td",null,"Summe Ausgaben "+eur(s("Ausgabe","plan"))+" geplant, "+eur(s("Ausgabe","ist"))+" bisher · Summe Einnahmen "+eur(s("Einnahme","plan"))+" geplant, "+eur(s("Einnahme","ist"))+" bisher"); td2.colSpan=cols.length+1; tf.appendChild(td2); body.appendChild(tf); }
   tb.appendChild(body); wrap.appendChild(tb); sec.appendChild(wrap); pg.appendChild(sec); }
