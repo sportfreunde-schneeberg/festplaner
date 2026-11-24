@@ -211,6 +211,25 @@ img{max-width:100%}
 .legende{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;margin-top:8px}
 .lg{display:inline-flex;align-items:center;gap:6px}
 .lg::before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.bkachel{display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--rf,var(--band));border-radius:12px;padding:14px;color:var(--ink);text-decoration:none;min-height:150px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.bkachel:hover{border-color:var(--muted);border-top-color:var(--rf,var(--band))}
+.bsym{font-size:34px;line-height:1.1}
+.bkachel b{font-size:17px}
+.bsub{font-size:12.5px;color:var(--muted)}
+.bzahl{font-size:12.5px;color:var(--muted);margin-top:auto}
+.tlbox{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:12px;align-items:start}
+.tlmain{min-width:0}
+.tlpanel{display:flex;flex-direction:column;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13.5px;position:sticky;top:8px}
+.tlpanel > b{font-size:13px;margin-bottom:4px}
+.tlsw{display:flex;align-items:center;gap:8px;padding:5px 2px;cursor:pointer;border-radius:6px}
+.tlsw:hover{background:var(--chip,rgba(0,0,0,.04))}
+.tlsw input{width:18px;height:18px;margin:0;accent-color:var(--band)}
+.tlsw i{width:12px;height:12px;border-radius:3px;flex:none}
+.tlsw span{flex:1;min-width:0}
+.tlsw small{color:var(--muted);font-variant-numeric:tabular-nums}
+.tlswb{display:flex;gap:14px;margin-top:6px}
+@media (max-width:860px){.tlbox{grid-template-columns:1fr}.tlpanel{position:static;order:-1;flex-direction:row;flex-wrap:wrap;gap:2px 10px}.tlpanel > b,.tlswb{flex-basis:100%}.tlsw small{display:none}}
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
 .rcard{display:flex;flex-direction:column;gap:7px;background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--band);border-radius:10px;padding:13px 14px;color:var(--ink);text-decoration:none;min-width:0}
 .rcard:hover{border-color:var(--muted)}
@@ -340,6 +359,11 @@ var ISTATUS={offen:"Offen",angefragt:"Angefragt",bestellt:"Bestellt",geliefert:"
 var TYPEN={zelt:"Zelt",huette:"Hütte / Stand",pavillon:"Pavillon(s)",buehne:"Bühne",theke:"Theke / Ausgabe",garnituren:"Garnituren",biergarten:"Biergarten",wagen:"Wagen / Anhänger",geraet:"Gerät / Verteiler",licht:"Lichterketten",flaeche:"Fläche"};
 var PINH={zelt:5.6,huette:3.7,pavillon:3.5,buehne:5.8,theke:2.9,garnituren:1.5,biergarten:3,wagen:3.3,geraet:1.9,licht:4.9,flaeche:.7};
 var RFARBE={"Organisation":"#1f4d2e","Infrastruktur":"#2c6a94","Bewirtung":"#b07d12","Programm":"#7a4fa3","Öffentlichkeitsarbeit":"#0f7b76","Sport / Jugend":"#5f8a3a","Gelände & Sportheim":"#8a5a2b"};
+/* Symbole der Bereichs-Kacheln auf der Übersicht (Streams laut Kick-off-Folie „So greift die Organisation ineinander“) */
+var RSYM={"Organisation":"🧭","Infrastruktur":"⛺","Bewirtung":"🍺","Programm":"🎺","Öffentlichkeitsarbeit":"📣","Sport / Jugend":"🧒⚽","Gelände & Sportheim":"🏗️"};
+/* „Chronik & Festschrift“ ist kein eigenes Ressort (gehört zu Programm), bekommt aber eine eigene Kachel und einen eigenen Schalter im Zeitstrahl. */
+var CHRONIK={name:"Chronik & Festschrift",sym:"📖",farbe:"#6d4c2f",muster:/chronik|festschrift|geschicht|histor|zeitungsaus|mannschaftsfoto/i};
+function istChronik(x){ return CHRONIK.muster.test(x.titel||""); }
 var ST3=["Offen","In Arbeit","Erledigt"];
 var T=function(k,l,t,o){ return [k,l,t||"text",o]; };
 var SCH={
@@ -354,6 +378,7 @@ var SCH={
  Einstellungen:{cols:[T("key","Schlüssel"),T("wert","Wert")]}
 };
 var D={}; Object.keys(SCH).forEach(function(k){ D[k]=[]; });
+var TLAUS={}; try{ TLAUS=JSON.parse(localStorage.getItem("fest2028tlaus")||"{}")||{}; }catch(_){}
 var S={items:new Map(),sel:null,filter:"alle",roof:false,move:false,canWrite:true,dragging:false,pending:false,geo:null,fotoOpen:false,page:"start",mode:"demo",user:"",busy:false,msFilter:"alle",msStatus:"alle",openMs:null,mode3d:"start"};
 
 var $=function(id){ return document.getElementById(id); };
@@ -694,7 +719,7 @@ function modebar(){ var b=$("modebar"); b.textContent=""; var live=S.mode==="liv
   else if(!window.FEST_NUR_DEMO){ add(b,btn("lnk strong","Mit Vereinskonto anmelden",anmelden)); }
   if(!window.FEST_NUR_DEMO) add(b,btn("lnk","Einstellungen",cfgOeffnen)); }
 function nav(){ var n=$("nav"); n.textContent=""; var items=[["start","Übersicht"],["meilensteine","Meilensteine"]];
-  D.Ressorts.forEach(function(r){ items.push(["r-"+r.kz,r.name]); }); items.push(["ideen","Ideen"],["kontakte","Kontakte"],["personen","Personen"],["budget","Budget"]);
+  D.Ressorts.forEach(function(r){ items.push(["r-"+r.kz,r.name]); if(r.name==="Programm") items.push(["chronik","Chronik"]); }); items.push(["ideen","Ideen"],["kontakte","Kontakte"],["personen","Personen"],["budget","Budget"]);
   items.forEach(function(i){ var a=el("a",S.page===i[0]?"on":"",i[1]); a.href="#"+i[0]; if(S.page===i[0]) a.setAttribute("aria-current","page"); n.appendChild(a); }); }
 function stats(){ var s=$("stats"); s.textContent=""; function st(v,l){ var li=el("li"); add(li,el("b",null,v),el("span",null,l)); s.appendChild(li); }
   var days=Math.ceil((FEST-new Date())/864e5), m=zaehl(D.Meilensteine), a=zaehl(D.Aufgaben);
@@ -703,8 +728,11 @@ function stats(){ var s=$("stats"); s.textContent=""; function st(v,l){ var li=e
 /* ---------- Seiten ---------- */
 function kopf(t,sub,rechts){ var h=el("div","sechead"), l=el("div"); add(l,el("h2",null,t),sub?el("p",null,sub):null); add(h,l,rechts); return h; }
 function zeitstrahl(){ var sec=el("section"); sec.appendChild(kopf("Zeitstrahl","Alle Meilensteine bis zum Fest. Ein Klick öffnet den Meilenstein mit seinen Aufgaben.",btn("btn","Alle Meilensteine",function(){ go("meilensteine"); })));
-  var ms=D.Meilensteine.filter(function(m){ return m.termin!=null; }).sort(function(a,b){ return a.termin-b.termin; });
-  if(!ms.length){ sec.appendChild(el("div","leer","Noch keine Meilensteine mit Termin. Lege sie unter „Meilensteine“ an.")); return sec; }
+  var alleMs=D.Meilensteine.filter(function(m){ return m.termin!=null; });
+  var ms=alleMs.filter(function(m){ return !TLAUS[m.ressort]&&!(TLAUS[CHRONIK.name]&&istChronik(m)); }).sort(function(a,b){ return a.termin-b.termin; });
+  var box=el("div","tlbox"), links=el("div","tlmain"); add(box,links,tlSchalter(alleMs)); sec.appendChild(box);
+  if(!alleMs.length){ links.appendChild(el("div","leer","Noch keine Meilensteine mit Termin. Lege sie unter „Meilensteine“ an.")); return sec; }
+  if(!ms.length){ links.appendChild(el("div","leer","Alle Bereiche sind ausgeblendet. Rechts mindestens einen Bereich einschalten.")); return sec; }
   var now=new Date(), nk=now.getFullYear()*12+now.getMonth(), f=sd(ms[0].termin), l=sd(ms[ms.length-1].termin);
   var start=Math.min(nk,f.getUTCFullYear()*12+f.getUTCMonth()), end=Math.max(l.getUTCFullYear()*12+l.getUTCMonth(),FEST.getFullYear()*12+FEST.getMonth());
   var wrap=el("div","tl"), grid=el("div","tlgrid"), heute=null;
@@ -719,11 +747,35 @@ function zeitstrahl(){ var sec=el("section"); sec.appendChild(kopf("Zeitstrahl",
       var top=el("span","tlct"); add(top,el("b",null,p2(sd(x.termin).getUTCDate())+"."+p2(mm+1)+"."),el("i","tlst",ZTEXT[z]));
       if(vorschlag(x)){ c.classList.add("tlv"); top.querySelector("b").appendChild(vtag()); } add(c,top,el("span","tltt",x.titel||""),el("span","tlr",x.ressort||"")); c.title=(x.ressort||"")+" · "+ZTEXT[z]+(vorschlag(x)?" · Termin ist ein Vorschlag":""); body.appendChild(c); });
     col.appendChild(body); grid.appendChild(col); }
-  wrap.appendChild(grid); sec.appendChild(wrap);
-  var leg=el("div","legende"); ressorts().forEach(function(r){ var s=el("span","lgr",r); s.style.setProperty("--rf",rfarbe(r)); leg.appendChild(s); });
-  var lv=el("span","lgv"); add(lv,vtag(),document.createTextNode("Termin noch nicht endgültig")); leg.appendChild(lv); leg.appendChild(el("span","lgsp")); ["erledigt","arbeit","offen","ueber"].forEach(function(z){ leg.appendChild(el("span","lg z-"+z,ZTEXT[z])); }); sec.appendChild(leg);
+  wrap.appendChild(grid); links.appendChild(wrap);
+  var leg=el("div","legende");
+  var lv=el("span","lgv"); add(lv,vtag(),document.createTextNode("Termin noch nicht endgültig")); leg.appendChild(lv); ["erledigt","arbeit","offen","ueber"].forEach(function(z){ leg.appendChild(el("span","lg z-"+z,ZTEXT[z])); }); links.appendChild(leg);
   if(heute) setTimeout(function(){ wrap.scrollLeft=Math.max(0,heute.offsetLeft-8); },0);
   return sec; }
+/* Schalter rechts neben dem Zeitstrahl: Bereiche ein- und ausblenden (Standard: alle an, gemerkt in diesem Browser). */
+function tlSchalter(alleMs){ var p=el("div","tlpanel"); add(p,el("b",null,"Bereiche im Zeitstrahl"));
+  function merk(){ try{ localStorage.setItem("fest2028tlaus",JSON.stringify(TLAUS)); }catch(_){} refresh(); }
+  ressorts().concat([CHRONIK.name]).forEach(function(r){ var n=alleMs.filter(function(m){ return r===CHRONIK.name?istChronik(m):m.ressort===r; }).length;
+    var l=el("label","tlsw"), cb=el("input"); cb.type="checkbox"; cb.checked=!TLAUS[r]; cb.addEventListener("change",function(){ if(cb.checked) delete TLAUS[r]; else TLAUS[r]=1; merk(); });
+    var f=el("i"); f.style.background=r===CHRONIK.name?CHRONIK.farbe:rfarbe(r); add(l,cb,f,el("span",null,(r===CHRONIK.name?CHRONIK.sym:(RSYM[r]||""))+" "+r),el("small",null,String(n))); p.appendChild(l); });
+  var r2=el("div","tlswb"); add(r2,btn("lnk","Alle zeigen",function(){ TLAUS={}; merk(); }),btn("lnk","Alle aus",function(){ ressorts().concat([CHRONIK.name]).forEach(function(r){ TLAUS[r]=1; }); merk(); })); p.appendChild(r2);
+  return p; }
+/* Bereichs-Kacheln oben auf der Übersicht: je Ressort eine Kachel mit Symbol und Stand; darunter liegen die Arbeitspakete (Meilensteine und Aufgaben). */
+function bereichKacheln(){ var sec=el("section"); sec.appendChild(kopf("Bereiche","Ein Klick öffnet den Bereich mit seinen Arbeitspaketen (Meilensteine und Aufgaben)."));
+  var grid=el("div","bgrid");
+  function kachel(href,sym,name,farbe,ms,au,sub){ var zm=zaehl(ms), za=zaehl(au), c=el("a","bkachel"); c.href=href; c.style.setProperty("--rf",farbe);
+    add(c,el("span","bsym",sym),el("b",null,name),sub?el("span","bsub",sub):null);
+    var bar=el("div","pbar"), fill=el("i"); fill.style.width=(za.n?Math.round(za.e/za.n*100):0)+"%"; fill.style.background=farbe; bar.appendChild(fill); c.appendChild(bar);
+    c.appendChild(el("span","bzahl",zm.n+" Meilensteine · "+za.n+" Aufgaben"+(zm.u+za.u?" · "+(zm.u+za.u)+" überfällig":""))); grid.appendChild(c); }
+  D.Ressorts.forEach(function(r){ kachel("#r-"+r.kz,RSYM[r.name]||"📌",r.name,rfarbe(r.name),D.Meilensteine.filter(function(x){ return x.ressort===r.name; }),D.Aufgaben.filter(function(x){ return x.ressort===r.name; }),r.leitung?"Leitung: "+r.leitung:null);
+    if(r.name==="Programm") kachel("#chronik",CHRONIK.sym,CHRONIK.name,CHRONIK.farbe,D.Meilensteine.filter(istChronik),D.Aufgaben.filter(istChronik),"Teil von Programm"); });
+  sec.appendChild(grid); return sec; }
+function seiteChronik(pg){ var ms=D.Meilensteine.filter(istChronik), au=D.Aufgaben.filter(istChronik);
+  var hd=el("section","rhead"); hd.style.borderLeftColor=CHRONIK.farbe; add(hd,el("h2",null,CHRONIK.sym+" "+CHRONIK.name),el("p",null,"Historische Fotos, Interviews, Vereinschronik, Zeitungsausschnitte, sportliche Erfolge, Mannschaftsfotos, Festschrift. Gehört zum Ressort Programm; hier stehen alle Meilensteine und Aufgaben, in denen Chronik oder Festschrift vorkommt.")); pg.appendChild(hd);
+  var sec=el("section"); sec.appendChild(kopf("Meilensteine",null)); sec.appendChild(msListe(ms,"Noch keine Meilensteine zu Chronik oder Festschrift.")); pg.appendChild(sec);
+  var frei=au.filter(function(a){ return ms.every(function(m){ return m.nr!==a.ms; }); });
+  var s2=el("section"); s2.appendChild(kopf("Weitere Aufgaben","Aufgaben zu Chronik und Festschrift, die unter einem anderen Meilenstein stehen",btn("btn","Aufgabe hinzufügen",function(){ formular("Aufgaben",null,{ressort:"Programm",status:"Offen",titel:"Chronik: "}); })));
+  var ul=el("ul","tasks card"); frei.forEach(function(a){ ul.appendChild(aufgabeZeile(a)); }); if(!frei.length) ul.appendChild(el("li","muted","Keine weiteren Aufgaben.")); s2.appendChild(ul); pg.appendChild(s2); }
 function ressortKarten(){ var sec=el("section"); sec.appendChild(kopf("Stand der Ressorts","Fortschritt nach erledigten Aufgaben. Ein Klick führt in das Ressort."));
   var grid=el("div","rgrid"); D.Ressorts.forEach(function(r){ var ms=D.Meilensteine.filter(function(x){ return x.ressort===r.name; }), au=D.Aufgaben.filter(function(x){ return x.ressort===r.name; }), zm=zaehl(ms), za=zaehl(au);
     var c=el("a","rcard"); c.href="#r-"+r.kz; c.style.borderTopColor=rfarbe(r.name);
@@ -734,8 +786,9 @@ function ressortKarten(){ var sec=el("section"); sec.appendChild(kopf("Stand der
     var nx=ms.filter(function(x){ return x.status!=="Erledigt"&&x.termin!=null; }).sort(function(a,b){ return a.termin-b.termin; })[0];
     c.appendChild(el("div","rn",nx?"Als Nächstes: "+fd(nx.termin)+(vorschlag(nx)?" (Vorschlag)":"")+" · "+nx.titel:"Keine offenen Meilensteine"));
     grid.appendChild(c); }); sec.appendChild(grid); return sec; }
-function seiteStart(pg){ var sec=el("section"); sec.appendChild(kopf("Festplatz","Bolzplatz an der Vereinsstraße. Zum Drehen ziehen, zum Zoomen zwei Finger oder Mausrad. Ein Klick auf eine Nummer zeigt die Position.",btn("btn","Zur Infrastruktur",function(){ go("r-INFRA"); })));
-  var host=el("div"); host.id="host3d"; sec.appendChild(host); pg.appendChild(sec); add(pg,zeitstrahl(),ressortKarten()); S.mode3d="start"; }
+function seiteStart(pg){ add(pg,bereichKacheln(),zeitstrahl());
+  var sec=el("section"); sec.appendChild(kopf("Festplatz in 3D","Zeltaufbau auf dem Bolzplatz an der Vereinsstraße. Zum Drehen ziehen, zum Zoomen zwei Finger oder Mausrad. Ein Klick auf eine Nummer zeigt die Position.",btn("btn","Zur Infrastruktur",function(){ go("r-INFRA"); })));
+  var host=el("div"); host.id="host3d"; sec.appendChild(host); pg.appendChild(sec); S.mode3d="start"; }
 
 function msListe(list,leerText){ var box=el("div","mslist"); if(!list.length){ box.appendChild(el("div","leer",leerText||"Keine Meilensteine.")); return box; }
   var monat=null; list.slice().sort(function(a,b){ return (a.termin==null?1e9:a.termin)-(b.termin==null?1e9:b.termin); }).forEach(function(m){ var d=sd(m.termin), mk=d?MON[d.getUTCMonth()]+" "+d.getUTCFullYear():"Ohne Termin";
@@ -883,7 +936,7 @@ $("cfgForm").addEventListener("submit",function(e){ e.preventDefault(); CFGK.for
 /* ---------- Ablauf ---------- */
 function route(){ var h=location.hash.slice(1)||"start"; S.page=h; refresh(); window.scrollTo(0,0); }
 function refresh(){ if(S.dragging){ S.pending=true; return; } var pg=$("page"); $("holder").appendChild($("stage")); pg.textContent=""; nav(); stats(); modebar();
-  var p=S.page; if(p==="meilensteine") seiteMeilensteine(pg); else if(p.indexOf("r-")===0) seiteRessort(pg,p.slice(2));
+  var p=S.page; if(p==="meilensteine") seiteMeilensteine(pg); else if(p==="chronik") seiteChronik(pg); else if(p.indexOf("r-")===0) seiteRessort(pg,p.slice(2));
   else if(p==="ideen") seiteTabelle(pg,"Ideen","Ideensammlung","Bausteine aus der Vorstandstagung und Beispiele anderer Vereine zum 100-Jährigen");
   else if(p==="kontakte") seiteTabelle(pg,"Kontakte","Kontakte","Lieferanten und Ansprechpartner, einmal gepflegt");
   else if(p==="budget") seiteTabelle(pg,"Budget","Budget","Plan und Ist je Posten");
